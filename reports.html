@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Student Attendance System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">Attendance System</h1>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="attendance.html" class="nav-link">Attendance List</a></li>
+                <li><a href="add-student.html" class="nav-link">Add Student</a></li>
+                <li><a href="reports.html" class="nav-link active">Reports</a></li>
+                <li><a href="#" class="nav-link">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="content">
+            <h2>Attendance Statistics</h2>
+            
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Attendance Status</h3>
+                    <div class="donut-chart-container">
+                        <svg class="donut-chart" id="attendanceChart" width="200" height="200">
+                            <circle class="donut-ring" cx="100" cy="100" r="80" fill="none" stroke="#e0e0e0" stroke-width="20"></circle>
+                            <circle class="donut-segment" id="attendanceSegment" cx="100" cy="100" r="80" fill="none" stroke-width="20" stroke-dasharray="0 502.65" transform="rotate(-90 100 100)"></circle>
+                        </svg>
+                        <div class="donut-center">
+                            <span class="donut-value" id="attendanceValue">0%</span>
+                            <span class="donut-label">Good</span>
+                        </div>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #66BB6A;"></span>
+                            <span>Good (<span id="goodCount">0</span>)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #FFC107;"></span>
+                            <span>Warning (<span id="warningCount">0</span>)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #F44336;"></span>
+                            <span>Excluded (<span id="excludedCount">0</span>)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Participation Rate</h3>
+                    <div class="donut-chart-container">
+                        <svg class="donut-chart" id="participationChart" width="200" height="200">
+                            <circle class="donut-ring" cx="100" cy="100" r="80" fill="none" stroke="#e0e0e0" stroke-width="20"></circle>
+                            <circle class="donut-segment" id="participationSegment" cx="100" cy="100" r="80" fill="none" stroke-width="20" stroke-dasharray="0 502.65" transform="rotate(-90 100 100)"></circle>
+                        </svg>
+                        <div class="donut-center">
+                            <span class="donut-value" id="participationValue">0%</span>
+                            <span class="donut-label">Average</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-summary">
+                <div class="summary-item">
+                    <span class="summary-label">Total Students:</span>
+                    <span class="summary-value" id="totalStudents">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Average Absences:</span>
+                    <span class="summary-value" id="avgAbsences">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Average Participation:</span>
+                    <span class="summary-value" id="avgParticipation">0</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="statistics.js"></script>
+</body>
+</html>
+
