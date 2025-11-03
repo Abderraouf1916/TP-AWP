@@ -1,4 +1,4 @@
-// form validation
+//form validation
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('addStudentForm');
@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const firstNameInput = document.getElementById('firstName');
     const emailInput = document.getElementById('email');
     
-    // check student id
+    //check student id
     function validateStudentId(studentId) {
         if (studentId.trim() === '') {
             return 'Student ID is required.';
@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return '';
     }
-    
-    // validate name fields
+
+    //validate name fields
     function validateName(name, fieldName) {
         if (name.trim() === '') {
             return fieldName + ' is required.';
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return '';
     }
     
-    // email validation
+    //email validation
     function validateEmail(email) {
         if (email.trim() === '') {
             return 'Email is required.';
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // clear errors when typing
+    //clear error when typing
     studentIdInput.addEventListener('input', function() {
         const errorElement = document.getElementById('studentIdError');
         clearError(this, errorElement);
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clearError(this, errorElement);
     });
     
-    // handle form submit
+    //hndle form submit
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const firstNameError = validateName(firstNameInput.value, 'First Name');
         const emailError = validateEmail(emailInput.value);
         
-        // Display errors
+        //display errors
         if (studentIdError) {
             showError(studentIdInput, document.getElementById('studentIdError'), studentIdError);
             hasErrors = true;
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hasErrors = true;
         }
         
-        // submit if no errors
+        //submit 
         if (!hasErrors) {
             alert('Student added successfully!');
             form.reset();
