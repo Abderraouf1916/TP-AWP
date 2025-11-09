@@ -11,18 +11,24 @@
         <div class="nav-container">
             <h1 class="nav-title">Attendance System</h1>
             <ul class="nav-menu">
-                <li><a href="index.html" class="nav-link">Home</a></li>
                 <li><a href="attendance.html" class="nav-link active">Attendance List</a></li>
                 <li><a href="add-student.html" class="nav-link">Add Student</a></li>
                 <li><a href="reports.html" class="nav-link">Reports</a></li>
                 <li><a href="#" class="nav-link">Logout</a></li>
             </ul>
+
         </div>
     </nav>
 
     <main class="container">
         <div class="content">
             <h2>Student Attendance List</h2>
+            <div class="controls">
+                <label for="searchName" style="margin-right:0.5rem; font-weight:600;">Search by Name</label>
+                <input id="searchName" type="text" placeholder="Last or First name" style="padding:0.5rem; margin-right:0.75rem; border-radius:4px; border:1px solid #ccc;" />
+                <button id="highlightExcellentBtn" class="btn btn-primary">Highlight Excellent Students</button>
+                <button id="resetColorsBtn" class="btn btn-secondary">Reset Colors</button>
+            </div>
             
             <div class="table-wrapper">
                 <table id="attendanceTable" class="attendance-table">
@@ -127,6 +133,7 @@
         </div>
     </main>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

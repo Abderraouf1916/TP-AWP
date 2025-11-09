@@ -1,13 +1,10 @@
-//form validation
-
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('addStudentForm');
     const studentIdInput = document.getElementById('studentId');
     const lastNameInput = document.getElementById('lastName');
     const firstNameInput = document.getElementById('firstName');
     const emailInput = document.getElementById('email');
-    
-    //check student id
+
     function validateStudentId(studentId) {
         if (studentId.trim() === '') {
             return 'Student ID is required.';
@@ -18,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return '';
     }
 
-    //validate name fields
     function validateName(name, fieldName) {
         if (name.trim() === '') {
             return fieldName + ' is required.';
@@ -28,8 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return '';
     }
-    
-    //email validation
+
     function validateEmail(email) {
         if (email.trim() === '') {
             return 'Email is required.';
@@ -40,20 +35,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return '';
     }
-    
-    // show error
+
     function showError(input, errorElement, message) {
         input.classList.add('error');
         errorElement.textContent = message;
     }
-    
-    // clear error
+
     function clearError(input, errorElement) {
         input.classList.remove('error');
         errorElement.textContent = '';
     }
-    
-    // validate on blur
+
     studentIdInput.addEventListener('blur', function() {
         const error = validateStudentId(this.value);
         const errorElement = document.getElementById('studentIdError');
@@ -63,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearError(this, errorElement);
         }
     });
-    
+
     lastNameInput.addEventListener('blur', function() {
         const error = validateName(this.value, 'Last Name');
         const errorElement = document.getElementById('lastNameError');
@@ -73,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearError(this, errorElement);
         }
     });
-    
+
     firstNameInput.addEventListener('blur', function() {
         const error = validateName(this.value, 'First Name');
         const errorElement = document.getElementById('firstNameError');
@@ -83,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearError(this, errorElement);
         }
     });
-    
+
     emailInput.addEventListener('blur', function() {
         const error = validateEmail(this.value);
         const errorElement = document.getElementById('emailError');
@@ -93,62 +85,57 @@ document.addEventListener('DOMContentLoaded', function() {
             clearError(this, errorElement);
         }
     });
-    
-    //clear error when typing
+
     studentIdInput.addEventListener('input', function() {
         const errorElement = document.getElementById('studentIdError');
         clearError(this, errorElement);
     });
-    
+
     lastNameInput.addEventListener('input', function() {
         const errorElement = document.getElementById('lastNameError');
         clearError(this, errorElement);
     });
-    
+
     firstNameInput.addEventListener('input', function() {
         const errorElement = document.getElementById('firstNameError');
         clearError(this, errorElement);
     });
-    
+
     emailInput.addEventListener('input', function() {
         const errorElement = document.getElementById('emailError');
         clearError(this, errorElement);
     });
-    
-    //hndle form submit
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         let hasErrors = false;
-        
-        // Validate all fields
+
         const studentIdError = validateStudentId(studentIdInput.value);
         const lastNameError = validateName(lastNameInput.value, 'Last Name');
         const firstNameError = validateName(firstNameInput.value, 'First Name');
         const emailError = validateEmail(emailInput.value);
-        
-        //display errors
+
         if (studentIdError) {
             showError(studentIdInput, document.getElementById('studentIdError'), studentIdError);
             hasErrors = true;
         }
-        
+
         if (lastNameError) {
             showError(lastNameInput, document.getElementById('lastNameError'), lastNameError);
             hasErrors = true;
         }
-        
+
         if (firstNameError) {
             showError(firstNameInput, document.getElementById('firstNameError'), firstNameError);
             hasErrors = true;
         }
-        
+
         if (emailError) {
             showError(emailInput, document.getElementById('emailError'), emailError);
             hasErrors = true;
         }
-        
-        //submit 
+
         if (!hasErrors) {
             alert('Student added successfully!');
             form.reset();
