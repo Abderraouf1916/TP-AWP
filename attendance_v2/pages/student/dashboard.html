@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Student Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+                <li><a href="attendance.html" class="nav-link">My Attendance</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Student Dashboard</h1>
+            <span id="studentName"></span>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">My Courses</h2>
+            </div>
+            <div id="coursesList" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('student')) {}
+
+        const user = getCurrentUser();
+        if (user) {
+            document.getElementById('studentName').textContent = `Welcome, ${user.fullname}`;
+        }
+
+        async function loadCourses() {
+            try {
+                const result = await apiCall(`courses.php?student_id=${user.profile_id}`);
+                const courses = result.data;
+
+                const coursesDiv = document.getElementById('coursesList');
+                
+                if (courses.length === 0) {
+                    coursesDiv.innerHTML = '<p>No courses enrolled.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Course Code</th><th>Course Name</th><th>Group</th><th>Professor</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+
+                courses.forEach(course => {
+                    html += `<tr>
+                        <td>${escapeHtml(course.course_code)}</td>
+                        <td>${escapeHtml(course.course_name)}</td>
+                        <td>${escapeHtml(course.group_code || 'N/A')}</td>
+                        <td>${escapeHtml(course.professor_name || 'N/A')}</td>
+                        <td>
+                            <a href="attendance.html?course_id=${course.id}&group_id=${course.group_id}" class="btn btn-primary btn-sm">View Attendance</a>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                coursesDiv.innerHTML = html;
+            } catch (error) {
+                document.getElementById('coursesList').innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        loadCourses();
+    </script>
+</body>
+</html>
+
+
+
+
+
+

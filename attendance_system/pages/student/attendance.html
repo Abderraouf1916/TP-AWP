@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Attendance - Attendance System</title>
+    <link rel="stylesheet" href="../../assets/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">Attendance System - Student</h1>
+            <ul class="nav-menu">
+                <li><a href="home.html" class="nav-link">Home</a></li>
+                <li><a href="#" class="nav-link" onclick="logout(); return false;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="content">
+            <h2>My Attendance</h2>
+            <div id="message" class="message" style="display: none;"></div>
+            
+            <div id="courseInfo" class="card" style="margin-bottom: 1.5rem;"></div>
+            
+            <div id="loading" class="loading">Loading attendance...</div>
+            <div id="attendanceTable" style="display: none;">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Justification</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Justification Modal -->
+    <div id="justificationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%;">
+            <h3>Submit Justification</h3>
+            <form id="justificationForm">
+                <input type="hidden" id="recordId">
+                <div class="form-group">
+                    <label for="justificationText">Justification:</label>
+                    <textarea id="justificationText" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../assets/common.js"></script>
+    <script src="../../assets/auth.js"></script>
+    <script>
+        // Check authentication
+        if (!requireLogin('student')) {
+            // Redirect will happen in requireLogin
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const courseId = urlParams.get('course_id');
+        const groupId = urlParams.get('group_id');
+        const STUDENT_ID = getUserId();
+        
+        async function loadAttendance() {
+            if (!courseId) {
+                showMessage('Invalid course ID', 'error');
+                return;
+            }
+            
+            try {
+                // Load course info
+                const coursesResult = await apiCall(`courses.php?student_id=${STUDENT_ID}`);
+                const course = coursesResult.data.find(c => c.id == courseId);
+                
+                if (course) {
+                    document.getElementById('courseInfo').innerHTML = `
+                        <h3>${escapeHtml(course.course_code)} - ${escapeHtml(course.course_name)}</h3>
+                        <p>Group: ${escapeHtml(course.group_code)}</p>
+                    `;
+                }
+                
+                // Load attendance records
+                const result = await apiCall(`attendance.php?student_id=${STUDENT_ID}&course_id=${courseId}`);
+                const records = result.data;
+                
+                if (records.length === 0) {
+                    document.getElementById('attendanceTable').innerHTML = 
+                        '<p>No attendance records found for this course.</p>';
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                
+                let html = '';
+                records.forEach(record => {
+                    const statusClass = record.status === 'present' ? 'status-present' : 
+                                       record.status === 'justified' ? 'status-justified' : 'status-absent';
+                    
+                    html += `
+                        <tr>
+                            <td>${formatDate(record.session_date)}</td>
+                            <td><span class="status-badge ${statusClass}">${record.status.toUpperCase()}</span></td>
+                            <td>${record.justification ? escapeHtml(record.justification) : '-'}</td>
+                            <td>
+                                ${record.status === 'absent' && record.session_status === 'closed' ? 
+                                    `<button class="btn btn-primary" onclick="openModal(${record.id})">Submit Justification</button>` : 
+                                    '-'
+                                }
+                            </td>
+                        </tr>`;
+                });
+                
+                document.getElementById('attendanceList').innerHTML = html;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('attendanceTable').style.display = 'block';
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                showMessage('Error loading attendance: ' + error.message, 'error');
+            }
+        }
+        
+        function openModal(recordId) {
+            document.getElementById('recordId').value = recordId;
+            document.getElementById('justificationText').value = '';
+            document.getElementById('justificationModal').style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('justificationModal').style.display = 'none';
+        }
+        
+        document.getElementById('justificationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const recordId = document.getElementById('recordId').value;
+            const justification = document.getElementById('justificationText').value.trim();
+            
+            try {
+                await apiCall('attendance.php', 'PUT', {
+                    record_id: parseInt(recordId),
+                    justification: justification
+                });
+                
+                showMessage('Justification submitted successfully!');
+                closeModal();
+                loadAttendance();
+            } catch (error) {
+                showMessage('Error submitting justification: ' + error.message, 'error');
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', loadAttendance);
+    </script>
+</body>
+</html>
+

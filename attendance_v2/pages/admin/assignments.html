@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Assignments</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Admin Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="students.html" class="nav-link">Students</a></li>
+                <li><a href="professors.html" class="nav-link">Professors</a></li>
+                <li><a href="assignments.html" class="nav-link active">Course Assignments</a></li>
+                <li><a href="users.html" class="nav-link">Users</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Course Assignments</h2>
+                <button class="btn btn-primary" onclick="showAddAssignmentModal()">Assign Professor to Course</button>
+            </div>
+
+            <div id="assignmentsTable" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Assignment Modal -->
+    <div class="modal" id="addAssignmentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Assign Professor to Course</h3>
+                <button class="modal-close" onclick="closeModal('addAssignmentModal')">×</button>
+            </div>
+            <form id="addAssignmentForm">
+                <div class="form-group">
+                    <label class="form-label">Professor <span class="required">*</span></label>
+                    <select name="professor_id" class="form-control" id="professorSelect" required>
+                        <option value="">Select Professor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Course <span class="required">*</span></label>
+                    <select name="course_id" class="form-control" id="courseSelect" required>
+                        <option value="">Select Course</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Group <span class="required">*</span></label>
+                    <select name="group_id" class="form-control" id="groupSelect" required>
+                        <option value="">Select Group</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addAssignmentModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('admin')) {}
+
+        let professors = [];
+        let courses = [];
+        let groups = [];
+
+        async function loadProfessors() {
+            try {
+                const result = await apiCall('professors.php');
+                professors = result.data;
+                const select = document.getElementById('professorSelect');
+                professors.forEach(professor => {
+                    const option = document.createElement('option');
+                    option.value = professor.id;
+                    option.textContent = `${professor.professor_code} - ${professor.fullname}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading professors:', error);
+            }
+        }
+
+        async function loadCourses() {
+            try {
+                const result = await apiCall('courses.php');
+                courses = result.data;
+                const select = document.getElementById('courseSelect');
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.course_code} - ${course.course_name}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading courses:', error);
+            }
+        }
+
+        async function loadGroups() {
+            try {
+                const result = await apiCall('groups.php');
+                groups = result.data;
+                const select = document.getElementById('groupSelect');
+                groups.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.id;
+                    option.textContent = `${group.group_code} - ${group.group_name}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading groups:', error);
+            }
+        }
+
+        async function loadAssignments() {
+            const tableDiv = document.getElementById('assignmentsTable');
+            tableDiv.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const result = await apiCall('assignments.php');
+                const assignments = result.data;
+
+                if (assignments.length === 0) {
+                    tableDiv.innerHTML = '<p>No assignments found. Assign a professor to a course and group.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Professor</th><th>Course</th><th>Group</th><th>Assigned Date</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+
+                assignments.forEach(assignment => {
+                    html += `<tr>
+                        <td>${escapeHtml(assignment.professor_code)} - ${escapeHtml(assignment.professor_name)}</td>
+                        <td>${escapeHtml(assignment.course_code)} - ${escapeHtml(assignment.course_name)}</td>
+                        <td>${escapeHtml(assignment.group_code)} - ${escapeHtml(assignment.group_name)}</td>
+                        <td>${formatDate(assignment.assigned_at)}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteAssignment(${assignment.id})">Remove</button>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                tableDiv.innerHTML = html;
+            } catch (error) {
+                tableDiv.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function deleteAssignment(id) {
+            if (!confirm('Are you sure you want to remove this assignment?')) return;
+
+            try {
+                await apiCall(`assignments.php?id=${id}`, 'DELETE');
+                showAlert('Assignment removed successfully');
+                loadAssignments();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        function showAddAssignmentModal() {
+            loadProfessors();
+            loadCourses();
+            loadGroups();
+            showModal('addAssignmentModal');
+        }
+
+        document.getElementById('addAssignmentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.professor_id = parseInt(data.professor_id);
+            data.course_id = parseInt(data.course_id);
+            data.group_id = parseInt(data.group_id);
+
+            try {
+                await apiCall('assignments.php', 'POST', data);
+                showAlert('Professor assigned to course successfully');
+                closeModal('addAssignmentModal');
+                this.reset();
+                loadAssignments();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        });
+
+        loadAssignments();
+    </script>
+</body>
+</html>
+
+
+
+
+
+

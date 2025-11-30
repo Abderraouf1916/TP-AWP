@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Professor Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="sessions.html" class="nav-link">Sessions</a></li>
+                <li><a href="statistics.html" class="nav-link active">Statistics</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Attendance Statistics</h2>
+            </div>
+            
+            <div class="form-group" style="max-width: 300px;">
+                <label class="form-label">Filter by Course & Group</label>
+                <select id="filterSelect" class="form-control" onchange="loadStatistics()">
+                    <option value="">All Courses & Groups</option>
+                </select>
+            </div>
+
+            <div id="statisticsTable" class="loading">
+                <div class="spinner"></div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('professor')) {}
+
+        const user = getCurrentUser();
+        let chart = null;
+
+        async function loadFilters() {
+            try {
+                const coursesResult = await apiCall(`courses.php?professor_id=${user.profile_id}`);
+                const groupsResult = await apiCall('groups.php');
+                
+                const select = document.getElementById('filterSelect');
+                coursesResult.data.forEach(course => {
+                    groupsResult.data.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = `${course.id}_${group.id}`;
+                        option.textContent = `${course.course_code} - ${group.group_code}`;
+                        select.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading filters:', error);
+            }
+        }
+
+        async function loadStatistics() {
+            const tableDiv = document.getElementById('statisticsTable');
+            tableDiv.innerHTML = '<div class="spinner"></div>';
+
+            const filter = document.getElementById('filterSelect').value;
+            let courseId = null;
+            let groupId = null;
+
+            if (filter) {
+                [courseId, groupId] = filter.split('_');
+            }
+
+            try {
+                let url = `statistics.php?professor_id=${user.profile_id}`;
+                if (courseId) url += `&course_id=${courseId}`;
+                if (groupId) url += `&group_id=${groupId}`;
+
+                const result = await apiCall(url);
+                const stats = result.data;
+
+                if (stats.length === 0) {
+                    tableDiv.innerHTML = '<p>No statistics available.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Matricule</th><th>Full Name</th><th>Present</th><th>Absent</th><th>Justified</th><th>Total</th><th>Attendance Rate</th>';
+                html += '</tr></thead><tbody>';
+
+                const chartData = {
+                    labels: [],
+                    present: [],
+                    absent: [],
+                    justified: []
+                };
+
+                stats.forEach(stat => {
+                    const rate = stat.attendance_rate || 0;
+                    const rateColor = rate >= 75 ? 'badge-success' : rate >= 50 ? 'badge-warning' : 'badge-danger';
+                    
+                    html += `<tr>
+                        <td>${escapeHtml(stat.matricule)}</td>
+                        <td>${escapeHtml(stat.fullname)}</td>
+                        <td>${stat.present_count || 0}</td>
+                        <td>${stat.absent_count || 0}</td>
+                        <td>${stat.justified_count || 0}</td>
+                        <td>${stat.total_sessions || 0}</td>
+                        <td><span class="badge ${rateColor}">${rate}%</span></td>
+                    </tr>`;
+
+                    chartData.labels.push(stat.fullname);
+                    chartData.present.push(stat.present_count || 0);
+                    chartData.absent.push(stat.absent_count || 0);
+                    chartData.justified.push(stat.justified_count || 0);
+                });
+
+                html += '</tbody></table></div>';
+                tableDiv.innerHTML = html;
+
+                // Update chart
+                updateChart(chartData);
+            } catch (error) {
+                tableDiv.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: data.present,
+                            backgroundColor: '#10b981'
+                        },
+                        {
+                            label: 'Absent',
+                            data: data.absent,
+                            backgroundColor: '#ef4444'
+                        },
+                        {
+                            label: 'Justified',
+                            data: data.justified,
+                            backgroundColor: '#f59e0b'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        loadFilters();
+        loadStatistics();
+    </script>
+</body>
+</html>
+
+
+
+
+
+

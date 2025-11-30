@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Dashboard</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Professor Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+                <li><a href="sessions.html" class="nav-link">Sessions</a></li>
+                <li><a href="statistics.html" class="nav-link">Statistics</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Professor Dashboard</h1>
+            <span id="professorName"></span>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">My Courses</h2>
+            </div>
+            <div id="coursesList" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Recent Sessions</h2>
+            </div>
+            <div id="recentSessions" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('professor')) {}
+
+        const user = getCurrentUser();
+        if (user) {
+            document.getElementById('professorName').textContent = `Welcome, ${user.fullname}`;
+        }
+
+        async function loadCourses() {
+            try {
+                const result = await apiCall(`courses.php?professor_id=${user.profile_id}`);
+                const courses = result.data;
+
+                const coursesDiv = document.getElementById('coursesList');
+                
+                if (courses.length === 0) {
+                    coursesDiv.innerHTML = '<p>No courses assigned.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Course Code</th><th>Course Name</th><th>Description</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+
+                courses.forEach(course => {
+                    html += `<tr>
+                        <td>${escapeHtml(course.course_code)}</td>
+                        <td>${escapeHtml(course.course_name)}</td>
+                        <td>${escapeHtml(course.description || '')}</td>
+                        <td>
+                            <a href="sessions.html?course_id=${course.id}" class="btn btn-primary btn-sm">View Sessions</a>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                coursesDiv.innerHTML = html;
+            } catch (error) {
+                document.getElementById('coursesList').innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function loadRecentSessions() {
+            try {
+                const result = await apiCall(`sessions.php?professor_id=${user.profile_id}`);
+                const sessions = result.data.slice(0, 5); // Show 5 most recent
+
+                const sessionsDiv = document.getElementById('recentSessions');
+                
+                if (sessions.length === 0) {
+                    sessionsDiv.innerHTML = '<p>No sessions found.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Date</th><th>Course</th><th>Group</th><th>Status</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+
+                sessions.forEach(session => {
+                    const statusClass = session.status === 'open' ? 'badge-success' : 'badge-secondary';
+                    html += `<tr>
+                        <td>${formatDate(session.session_date)}</td>
+                        <td>${escapeHtml(session.course_code)} - ${escapeHtml(session.course_name)}</td>
+                        <td>${escapeHtml(session.group_code)}</td>
+                        <td><span class="badge ${statusClass}">${escapeHtml(session.status)}</span></td>
+                        <td>
+                            <a href="session.html?id=${session.id}" class="btn btn-primary btn-sm">View</a>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                sessionsDiv.innerHTML = html;
+            } catch (error) {
+                document.getElementById('recentSessions').innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        loadCourses();
+        loadRecentSessions();
+    </script>
+</body>
+</html>
+
+
+
+
+
+

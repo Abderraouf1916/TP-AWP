@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance System - Login</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-title">Attendance System</h1>
+                <p class="login-subtitle">Sign in to your account</p>
+            </div>
+
+            <div class="role-tabs" id="roleTabs">
+                <button class="role-tab active" data-role="student">Student</button>
+                <button class="role-tab" data-role="professor">Professor</button>
+                <button class="role-tab" data-role="admin">Admin</button>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </form>
+
+            <div id="loginError" class="alert alert-error" style="display: none; margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <script src="assets/js/theme.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+        let selectedRole = 'student';
+
+        // Role tabs
+        document.querySelectorAll('.role-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                selectedRole = this.dataset.role;
+            });
+        });
+
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+
+            errorDiv.style.display = 'none';
+
+            try {
+                const result = await apiCall('auth.php', 'POST', {
+                    username: username,
+                    password: password,
+                    role: selectedRole
+                });
+
+                setCurrentUser(result.user);
+
+                // Redirect based on role
+                if (selectedRole === 'admin') {
+                    window.location.href = 'pages/admin/dashboard.html';
+                } else if (selectedRole === 'professor') {
+                    window.location.href = 'pages/professor/dashboard.html';
+                } else {
+                    window.location.href = 'pages/student/dashboard.html';
+                }
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Login failed. Please check your credentials.';
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+

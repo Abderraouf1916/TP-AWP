@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sessions</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Professor Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="sessions.html" class="nav-link active">Sessions</a></li>
+                <li><a href="statistics.html" class="nav-link">Statistics</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Attendance Sessions</h2>
+                <button class="btn btn-primary" onclick="showAddSessionModal()">Create Session</button>
+            </div>
+
+            <div id="sessionsList" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Session Modal -->
+    <div class="modal" id="addSessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Session</h3>
+                <button class="modal-close" onclick="closeModal('addSessionModal')">×</button>
+            </div>
+            <form id="addSessionForm">
+                <div class="form-group">
+                    <label class="form-label">Course <span class="required">*</span></label>
+                    <select name="course_id" class="form-control" id="courseSelect" required>
+                        <option value="">Select Course</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Group <span class="required">*</span></label>
+                    <select name="group_id" class="form-control" id="groupSelect" required>
+                        <option value="">Select Group</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Session Date <span class="required">*</span></label>
+                    <input type="date" name="session_date" class="form-control" id="sessionDateInput" required>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addSessionModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('professor')) {}
+
+        const user = getCurrentUser();
+        let courses = [];
+        let groups = [];
+        let courseChangeListenerAdded = false;
+
+        async function loadCourses() {
+            try {
+                const result = await apiCall(`courses.php?professor_id=${user.profile_id}`);
+                courses = result.data;
+                const select = document.getElementById('courseSelect');
+                
+                // Set up course change listener only once
+                if (!courseChangeListenerAdded) {
+                    select.addEventListener('change', function() {
+                        const courseId = this.value;
+                        if (courseId) {
+                            loadGroups(courseId);
+                        } else {
+                            loadGroups(); // Load all if no course selected
+                        }
+                    });
+                    courseChangeListenerAdded = true;
+                }
+
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.course_code} - ${course.course_name}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading courses:', error);
+            }
+        }
+
+        async function loadGroups(courseId = null) {
+            try {
+                const select = document.getElementById('groupSelect');
+                // Clear existing options except the first one
+                select.innerHTML = '<option value="">Select Group</option>';
+
+                if (!courseId) {
+                    // Load all groups assigned to this professor
+                    const result = await apiCall(`professor_assignments.php?professor_id=${user.profile_id}`);
+                    groups = result.data;
+                    
+                    groups.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group.id;
+                        option.textContent = `${group.group_code} - ${group.group_name}`;
+                        option.dataset.courseId = group.course_id;
+                        select.appendChild(option);
+                    });
+                } else {
+                    // Load only groups for the selected course
+                    const result = await apiCall(`professor_assignments.php?professor_id=${user.profile_id}&course_id=${courseId}`);
+                    groups = result.data;
+                    
+                    if (groups.length === 0) {
+                        select.innerHTML = '<option value="">No groups assigned for this course</option>';
+                        return;
+                    }
+
+                    groups.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group.id;
+                        option.textContent = `${group.group_code} - ${group.group_name}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading groups:', error);
+                const select = document.getElementById('groupSelect');
+                select.innerHTML = '<option value="">Error loading groups</option>';
+            }
+        }
+
+        async function loadSessions() {
+            const sessionsDiv = document.getElementById('sessionsList');
+            sessionsDiv.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const result = await apiCall(`sessions.php?professor_id=${user.profile_id}`);
+                const sessions = result.data;
+
+                if (sessions.length === 0) {
+                    sessionsDiv.innerHTML = '<p>No sessions found. Create your first session.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Date</th><th>Course</th><th>Group</th><th>Status</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+
+                sessions.forEach(session => {
+                    const statusClass = session.status === 'open' ? 'badge-success' : 'badge-secondary';
+                    html += `<tr>
+                        <td>${formatDate(session.session_date)}</td>
+                        <td>${escapeHtml(session.course_code)} - ${escapeHtml(session.course_name)}</td>
+                        <td>${escapeHtml(session.group_code)}</td>
+                        <td><span class="badge ${statusClass}">${escapeHtml(session.status)}</span></td>
+                        <td>
+                            <a href="session.html?id=${session.id}" class="btn btn-primary btn-sm">View/Edit</a>
+                            ${session.status === 'open' ? `<button class="btn btn-success btn-sm" onclick="closeSession(${session.id})">Close</button>` : ''}
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                sessionsDiv.innerHTML = html;
+            } catch (error) {
+                sessionsDiv.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function closeSession(id) {
+            if (!confirm('Close this session? You will not be able to edit attendance after closing.')) return;
+
+            try {
+                await apiCall('sessions.php', 'PUT', { session_id: id, status: 'closed' });
+                showAlert('Session closed successfully');
+                loadSessions();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        function showAddSessionModal() {
+            // Reset form
+            document.getElementById('addSessionForm').reset();
+            document.getElementById('courseSelect').innerHTML = '<option value="">Select Course</option>';
+            document.getElementById('groupSelect').innerHTML = '<option value="">Select Group</option>';
+            
+            loadCourses();
+            loadGroups(); // Load all assigned groups initially
+            // Set today's date as default
+            document.getElementById('sessionDateInput').value = new Date().toISOString().split('T')[0];
+            showModal('addSessionModal');
+        }
+
+
+        document.getElementById('addSessionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.professor_id = user.profile_id;
+
+            try {
+                await apiCall('sessions.php', 'POST', data);
+                showAlert('Session created successfully');
+                closeModal('addSessionModal');
+                this.reset();
+                loadSessions();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        });
+
+        loadSessions();
+    </script>
+</body>
+</html>
+

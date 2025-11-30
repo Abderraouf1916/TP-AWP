@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Home - Attendance System</title>
+    <link rel="stylesheet" href="../../assets/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">Attendance System - Professor</h1>
+            <ul class="nav-menu">
+                <li><a href="home.html" class="nav-link active">Home</a></li>
+                <li><a href="summary.html" class="nav-link">Summary</a></li>
+                <li><a href="#" class="nav-link" onclick="logout(); return false;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="content">
+            <h2>My Sessions</h2>
+            <div id="message" class="message" style="display: none;"></div>
+            
+            <div id="loading" class="loading">Loading sessions...</div>
+            <div id="sessionsContainer"></div>
+        </div>
+    </main>
+
+    <script src="../../assets/common.js"></script>
+    <script src="../../assets/auth.js"></script>
+    <script>
+        // Check authentication
+        if (!requireLogin('professor')) {
+            // Redirect will happen in requireLogin
+        }
+        
+        const PROFESSOR_ID = getUserId();
+        
+        async function loadSessions() {
+            try {
+                const result = await apiCall(`sessions.php?professor_id=${PROFESSOR_ID}`);
+                const courses = result.data;
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (courses.length === 0) {
+                    document.getElementById('sessionsContainer').innerHTML = 
+                        '<p>No sessions found. Create a new session to get started.</p>';
+                    return;
+                }
+                
+                let html = '';
+                courses.forEach(course => {
+                    html += `
+                        <div class="card">
+                            <h3>${escapeHtml(course.course_code)} - ${escapeHtml(course.course_name)}</h3>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Group</th>
+                                            <th>Status</th>
+                                            <th>Attendance Count</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                    
+                    if (course.sessions.length === 0) {
+                        html += '<tr><td colspan="5">No sessions for this course</td></tr>';
+                    } else {
+                        course.sessions.forEach(session => {
+                            const statusClass = session.status === 'open' ? 'status-open' : 'status-closed';
+                            html += `
+                                <tr>
+                                    <td>${formatDate(session.session_date)}</td>
+                                    <td>${escapeHtml(session.group_code)}</td>
+                                    <td><span class="status-badge ${statusClass}">${session.status.toUpperCase()}</span></td>
+                                    <td>${session.attendance_count || 0}</td>
+                                    <td>
+                                        <a href="session.html?id=${session.id}" class="btn btn-primary">View/Mark</a>
+                                        ${session.status === 'open' ? 
+                                            `<button class="btn btn-secondary" onclick="closeSession(${session.id})">Close</button>` : 
+                                            ''
+                                        }
+                                    </td>
+                                </tr>`;
+                        });
+                    }
+                    
+                    html += `</tbody></table></div></div>`;
+                });
+                
+                document.getElementById('sessionsContainer').innerHTML = html;
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                showMessage('Error loading sessions: ' + error.message, 'error');
+            }
+        }
+        
+        async function closeSession(sessionId) {
+            if (!confirm('Are you sure you want to close this session?')) return;
+            
+            try {
+                await apiCall('sessions.php', 'PUT', { id: sessionId, status: 'closed' });
+                showMessage('Session closed successfully');
+                loadSessions();
+            } catch (error) {
+                showMessage('Error closing session: ' + error.message, 'error');
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadSessions);
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Admin Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+                <li><a href="students.html" class="nav-link">Students</a></li>
+                <li><a href="professors.html" class="nav-link">Professors</a></li>
+                <li><a href="assignments.html" class="nav-link">Course Assignments</a></li>
+                <li><a href="users.html" class="nav-link">Users</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Admin Dashboard</h1>
+            <span id="adminName"></span>
+        </div>
+
+        <div class="grid grid-3">
+            <div class="stat-card">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value" id="totalStudents">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Professors</div>
+                <div class="stat-value" id="totalProfessors">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Users</div>
+                <div class="stat-value" id="totalUsers">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Quick Actions</h2>
+            </div>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <a href="students.html" class="btn btn-primary">Manage Students</a>
+                <a href="professors.html" class="btn btn-primary">Manage Professors</a>
+                <a href="assignments.html" class="btn btn-primary">Course Assignments</a>
+                <a href="users.html" class="btn btn-primary">Manage Users</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        // Check authentication
+        if (!requireAuth('admin')) {
+            // Redirect handled in requireAuth
+        }
+
+        // Display admin name
+        const user = getCurrentUser();
+        if (user) {
+            document.getElementById('adminName').textContent = `Welcome, ${user.fullname}`;
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                // Load students
+                const studentsResult = await apiCall('students.php');
+                document.getElementById('totalStudents').textContent = studentsResult.data.length;
+
+                // Load professors
+                const professorsResult = await apiCall('professors.php');
+                document.getElementById('totalProfessors').textContent = professorsResult.data.length;
+
+                // Load users
+                const usersResult = await apiCall('users.php');
+                document.getElementById('totalUsers').textContent = usersResult.data.length;
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        loadStats();
+    </script>
+</body>
+</html>
+

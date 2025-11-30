@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Session</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Professor Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="sessions.html" class="nav-link">Sessions</a></li>
+                <li><a href="statistics.html" class="nav-link">Statistics</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title" id="sessionTitle">Attendance Session</h2>
+                <button class="btn btn-success" onclick="saveAttendance()" id="saveBtn">Save Attendance</button>
+            </div>
+
+            <div id="sessionInfo"></div>
+            <div id="attendanceTable" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('professor')) {}
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('id');
+        let sessionData = null;
+        let students = [];
+        let attendanceRecords = [];
+
+        async function loadSession() {
+            try {
+                const result = await apiCall(`sessions.php?session_id=${sessionId}`);
+                sessionData = result.data;
+
+                document.getElementById('sessionTitle').textContent = 
+                    `Attendance - ${sessionData.course_code} - ${formatDate(sessionData.session_date)}`;
+
+                document.getElementById('sessionInfo').innerHTML = `
+                    <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-card-hover); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div><strong>Course:</strong> ${escapeHtml(sessionData.course_code)} - ${escapeHtml(sessionData.course_name)}</div>
+                        <div><strong>Group:</strong> ${escapeHtml(sessionData.group_code)}</div>
+                        <div><strong>Date:</strong> ${formatDate(sessionData.session_date)}</div>
+                        <div><strong>Status:</strong> <span class="badge ${sessionData.status === 'open' ? 'badge-success' : 'badge-secondary'}">${escapeHtml(sessionData.status)}</span></div>
+                    </div>
+                `;
+
+                if (sessionData.status === 'closed') {
+                    document.getElementById('saveBtn').style.display = 'none';
+                }
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        async function loadAttendance() {
+            if (!sessionData) {
+                await loadSession(); // Wait for session data first
+            }
+
+            const tableDiv = document.getElementById('attendanceTable');
+            tableDiv.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                // Load students enrolled in this course AND group only
+                const studentsResult = await apiCall(`enrollments.php?course_id=${sessionData.course_id}&group_id=${sessionData.group_id}`);
+                students = studentsResult.data || [];
+
+                // Load existing attendance records
+                const attendanceResult = await apiCall(`attendance.php?session_id=${sessionId}`);
+                attendanceRecords = attendanceResult.data || [];
+                
+                // Create a map for quick lookup
+                const attendanceMap = {};
+                attendanceRecords.forEach(record => {
+                    attendanceMap[record.student_id] = record;
+                });
+
+                if (students.length === 0) {
+                    tableDiv.innerHTML = `<p>No students enrolled in this course for group ${escapeHtml(sessionData.group_code)}.</p>`;
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Matricule</th><th>Full Name</th><th>Present</th><th>Absent</th><th>Justified</th>';
+                html += '</tr></thead><tbody>';
+                    students.forEach(student => {
+                        const record = attendanceMap[student.id];
+                        const currentStatus = record ? record.status : 'absent';
+                        const disabled = sessionData.status === 'closed' ? 'disabled' : '';
+                        
+                        html += `<tr>
+                            <td>${escapeHtml(student.matricule)}</td>
+                            <td>${escapeHtml(student.fullname)}</td>
+                            <td style="text-align: center;">
+                                <input type="radio" name="attendance_${student.id}" value="present" 
+                                       ${currentStatus === 'present' ? 'checked' : ''} 
+                                       ${disabled}
+                                       data-student-id="${student.id}">
+                            </td>
+                            <td style="text-align: center;">
+                                <input type="radio" name="attendance_${student.id}" value="absent" 
+                                       ${currentStatus === 'absent' ? 'checked' : ''} 
+                                       ${disabled}
+                                       data-student-id="${student.id}">
+                            </td>
+                            <td style="text-align: center;">
+                                <input type="radio" name="attendance_${student.id}" value="justified" 
+                                       ${currentStatus === 'justified' ? 'checked' : ''} 
+                                       ${disabled}
+                                       data-student-id="${student.id}">
+                            </td>
+                        </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                tableDiv.innerHTML = html;
+            } catch (error) {
+                tableDiv.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function saveAttendance() {
+            if (!sessionData || sessionData.status !== 'open') {
+                showAlert('Session is closed', 'error');
+                return;
+            }
+
+            // Gather attendance records
+            const records = [];
+            document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                records.push({
+                    student_id: parseInt(radio.dataset.studentId),
+                    status: radio.value,
+                    justification: null
+                });
+            });
+
+            // For students not yet marked, default to absent
+            students.forEach(student => {
+                const exists = records.find(r => r.student_id === student.id);
+                if (!exists) {
+                    records.push({
+                        student_id: student.id,
+                        status: 'absent',
+                        justification: null
+                    });
+                }
+            });
+
+            try {
+                await apiCall('attendance.php', 'POST', {
+                    session_id: sessionId,
+                    records: records
+                });
+                showAlert('Attendance saved successfully');
+                loadAttendance();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        if (sessionId) {
+            loadSession();
+            loadAttendance();
+        } else {
+            window.location.href = 'sessions.html';
+        }
+    </script>
+</body>
+</html>
+

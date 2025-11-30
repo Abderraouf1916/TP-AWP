@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Admin Dashboard</div>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="students.html" class="nav-link">Students</a></li>
+                <li><a href="professors.html" class="nav-link">Professors</a></li>
+                <li><a href="assignments.html" class="nav-link">Course Assignments</a></li>
+                <li><a href="users.html" class="nav-link active">Users</a></li>
+                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Manage Users</h2>
+            </div>
+
+            <div id="usersTable" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal" id="editUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit User</h3>
+                <button class="modal-close" onclick="closeModal('editUserModal')">×</button>
+            </div>
+            <form id="editUserForm">
+                <input type="hidden" name="id" id="editUserId">
+                <div class="form-group">
+                    <label class="form-label">Username <span class="required">*</span></label>
+                    <input type="text" name="username" id="editUserUsername" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Full Name <span class="required">*</span></label>
+                    <input type="text" name="fullname" id="editUserFullname" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" id="editUserEmail" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role <span class="required">*</span></label>
+                    <select name="role" id="editUserRole" class="form-control" required>
+                        <option value="admin">Admin</option>
+                        <option value="professor">Professor</option>
+                        <option value="student">Student</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" id="editUserPassword" class="form-control" placeholder="Leave blank to keep current password">
+                    <small style="color: var(--text-secondary); font-size: 0.875rem;">Only fill this if you want to change the password</small>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/app.js"></script>
+    <script>
+        if (!requireAuth('admin')) {}
+
+        async function loadUsers() {
+            const tableDiv = document.getElementById('usersTable');
+            tableDiv.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const result = await apiCall('users.php');
+                const users = result.data;
+
+                if (users.length === 0) {
+                    tableDiv.innerHTML = '<p>No users found.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table class="table"><thead><tr>';
+                html += '<th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Created At</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+
+                users.forEach(user => {
+                    const roleClass = user.role === 'admin' ? 'badge-primary' : 
+                                     user.role === 'professor' ? 'badge-success' : 'badge-warning';
+                    html += `<tr>
+                        <td>${escapeHtml(user.username)}</td>
+                        <td>${escapeHtml(user.fullname)}</td>
+                        <td>${escapeHtml(user.email || '')}</td>
+                        <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span></td>
+                        <td>${formatDate(user.created_at)}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="editUser(${user.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                tableDiv.innerHTML = html;
+            } catch (error) {
+                tableDiv.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function editUser(id) {
+            try {
+                const result = await apiCall(`users.php?id=${id}`);
+                const user = result.data;
+                
+                if (!user) {
+                    showAlert('User not found', 'error');
+                    return;
+                }
+
+                // Populate edit form
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editUserUsername').value = user.username || '';
+                document.getElementById('editUserFullname').value = user.fullname || '';
+                document.getElementById('editUserEmail').value = user.email || '';
+                document.getElementById('editUserRole').value = user.role || '';
+                document.getElementById('editUserPassword').value = '';
+                
+                showModal('editUserModal');
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+
+            try {
+                await apiCall(`users.php?id=${id}`, 'DELETE');
+                showAlert('User deleted successfully');
+                loadUsers();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        document.getElementById('editUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Remove password if empty
+            if (!data.password) {
+                delete data.password;
+            }
+
+            try {
+                await apiCall('users.php', 'PUT', data);
+                showAlert('User updated successfully');
+                closeModal('editUserModal');
+                this.reset();
+                loadUsers();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        });
+
+        loadUsers();
+    </script>
+</body>
+</html>
+
