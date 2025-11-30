@@ -122,9 +122,7 @@ All API endpoints return JSON:
 - File uploads limited to PDF files
 - Maximum upload size: 5MB
 
-## License
 
-This project is created for educational purposes.
 
 
 
